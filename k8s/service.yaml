@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: student-api-svc
+  namespace: student-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: student-api
+  ports:
+    - port: 80
+      targetPort: 5001

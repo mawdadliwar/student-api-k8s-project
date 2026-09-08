@@ -1,0 +1,29 @@
+===================================================================
+                KUBERNETES DEPLOYMENT ARCHITECTURE
+===================================================================
+
+[ Client / Host Machine ]
+          │
+          │ HTTP Request (Host: student-api.local:8080)
+          ▼
+[ Ingress Controller (ingress-nginx) ]
+          │
+          │ Routes by Host & Path
+          ▼
+[ ClusterIP Service (student-api-svc:80) ]
+          │
+          ├─────────────────────────┐
+          ▼                         ▼
+  [ Pod 1 (student-api) ]   [ Pod 2 (student-api) ]
+          │                         │
+          └────────────┬────────────┘
+                       │
+                       ▼
+       [ PersistentVolumeClaim (student-api-pvc) ]
+                       │
+                       ▼
+       [ PersistentVolume (Local Storage) ]
+                       │
+                       ▼
+            [ SQLite Database File ]
+===================================================================

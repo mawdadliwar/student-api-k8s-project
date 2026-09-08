@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: broken-svc
+  namespace: student-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: bad-image-app-WRONG-LABEL
+  ports:
+    - port: 80
+      targetPort: 80
