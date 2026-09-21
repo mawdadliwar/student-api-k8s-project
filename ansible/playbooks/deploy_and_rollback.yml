@@ -1,0 +1,45 @@
+---
+- name: Deploy Workload with Automated Rollback Support
+  hosts: localhost
+  gather_facts: no
+  vars:
+    namespace: "student-platform-tf"
+    app_name: "student-api"
+    target_image: "student-api:1.0"
+
+  tasks:
+    - name: Apply Workload Deployment Configuration
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ app_name }}"
+            namespace: "{{ namespace }}"
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: "{{ app_name }}"
+                    image: "{{ target_image }}"
+
+    - name: Perform Post-Deployment Health Check Block
+      block:
+        - name: Wait for Rollout Completion
+          ansible.builtin.command: >
+            kubectl rollout status deployment/{{ app_name }} -n {{ namespace }} --timeout=20s
+          register: rollout_status
+
+      rescue:
+        - name: High Alert - Deployment Failed! Initiating Rollback
+          ansible.builtin.debug:
+            msg: "Rollout failed or timed out. Reverting deployment to previous healthy revision..."
+
+        - name: Execute Automated Kubernetes Rollback Procedure
+          ansible.builtin.command: >
+            kubectl rollout undo deployment/{{ app_name }} -n {{ namespace }}
+
+        - name: Fail Playbook Executions with Incident Record
+          ansible.builtin.fail:
+            msg: "Deployment aborted and automatically rolled back to last working revision."

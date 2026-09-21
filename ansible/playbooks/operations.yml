@@ -1,0 +1,33 @@
+---
+- name: Execute Operational and Maintenance Tasks
+  hosts: localhost
+  gather_facts: no
+  vars:
+    namespace: "student-platform-tf"
+    app_name: "student-api"
+    backup_dir: "/tmp/student_api_backups"
+
+  tasks:
+    - name: Ensure Local Backup Directory Exists
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Find Running Application Pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - "app={{ app_name }}"
+      register: pod_info
+
+    - name: Extract Database File from Pod PVC
+      ansible.builtin.command: >
+        kubectl cp {{ namespace }}/{{ pod_info.resources[0].metadata.name }}:/app/data/students.db {{ backup_dir }}/students_backup_{{ ansible_date_time.iso8601_basic | default('latest') }}.db
+      register: backup_res
+      ignore_errors: yes
+
+    - name: Report Backup Operations Outcome
+      ansible.builtin.debug:
+        msg: "Backup operation complete or skipped depending on container DB status."

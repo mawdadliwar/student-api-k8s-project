@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.venv/
+*.egg-info/
+instance/
+*.db
+*.sqlite3
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfvars
+
+# Ansible
+ansible/*.retry
+ansible/.vault_pass
+
+# Editor/OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log

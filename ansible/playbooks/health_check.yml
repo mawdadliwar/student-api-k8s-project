@@ -1,0 +1,35 @@
+---
+- name: Verify Kubernetes Workload Health
+  hosts: localhost
+  gather_facts: no
+  vars:
+    namespace: "student-platform-tf"
+    app_name: "student-api"
+
+  tasks:
+    - name: Get Deployment Status
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: "{{ app_name }}"
+        namespace: "{{ namespace }}"
+      register: deploy_info
+
+    - name: Assert Deployment Replicas are Ready
+      ansible.builtin.assert:
+        that:
+          - deploy_info.resources[0].status.readyReplicas == deploy_info.resources[0].status.replicas
+        success_msg: "All application replicas are fully operational!"
+        fail_msg: "Deployment replicas are not in a healthy state."
+
+    - name: Fetch Active Pod Statuses
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - "app={{ app_name }}"
+      register: pod_list
+
+    - name: Display Active Pod Names and Statuses
+      ansible.builtin.debug:
+        msg: "Pod {{ item.metadata.name }} is in state: {{ item.status.phase }}"
+      loop: "{{ pod_list.resources }}"

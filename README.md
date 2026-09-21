@@ -425,3 +425,51 @@ Each incident was investigated using Docker commands and container output, then 
 ## Docker Readiness
 
 The application is ready for the next stage of the project: Local Kubernetes Infrastructure.
+
+## Kubernetes Deployment (Task 4)
+
+### Cluster Architecture
+The Kubernetes deployment runs on a multi-node Kind cluster (student-platform) comprising 1 control-plane and 2 worker nodes. It uses an NGINX Ingress Controller to route HTTP traffic to a scalable Flask Deployment backed by SQLite stored on a Persistent Volume.
+
+### Kubernetes Directory Structure
+- k8s/pvc.yaml: PersistentVolumeClaim for SQLite database persistence
+- k8s/deployment.yaml: Deployment specs (2 Replicas, Health Probes, Resources)
+- k8s/service.yaml: ClusterIP Service pointing to app Pods
+- k8s/ingress.yaml: NGINX Ingress rules mapping student-api.local
+
+### Apply Kubernetes Manifests
+
+1. Create target namespace:
+   kubectl create namespace student-platform
+
+2. Deploy Storage, Workload, and Service:
+   kubectl apply -f k8s/pvc.yaml
+   kubectl apply -f k8s/deployment.yaml
+   kubectl apply -f k8s/service.yaml
+
+3. Deploy NGINX Ingress Controller & Resource:
+   kubectl apply -f [https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml](https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml)
+   kubectl apply -f k8s/ingress.yaml
+
+### Accessing the Application
+
+Add local domain mapping to /etc/hosts:
+127.0.0.1 student-api.local
+
+Execute API requests via Ingress Controller:
+- Health endpoint: curl -H "Host: student-api.local" http://localhost:8080/health
+- Get Students: curl -H "Host: student-api.local" http://localhost:8080/students
+
+### Kubernetes Lifecycle & Operational Scenarios
+- Rolling Updates: Zero-downtime rolling update executed from student-api:1.0 to student-api:1.1.
+- Rollback Execution: Automated rollback via kubectl rollout undo upon deployment of bad image tag (1.2-broken).
+- Root Cause Analysis (RCA): Tested and documented 4 failure scenarios:
+  1. CrashLoopBackOff (Startup failure)
+  2. ImagePullBackOff (Invalid image reference)
+  3. Service with No Endpoints (Selector mismatch)
+  4. Readiness Probe Failure (Mismatched probe port)
+
+### Documentation Reports Included
+- Task4_Kubernetes_Deployment_Report.md: Comprehensive setup and verification report.
+- Task4_Kubernetes_Troubleshooting_Report.md: Root Cause Analysis for all 4 failure scenarios.
+- ARCHITECTURE.txt: Visual ASCII text diagram of end-to-end data flow.

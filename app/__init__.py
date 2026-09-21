@@ -1,10 +1,12 @@
 import logging
+import time
 
 from flask import Flask, request
 from dotenv import load_dotenv
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 from app.config import Config
-from app.extensions import db
+from app.extensions import db, REQUEST_COUNT, REQUEST_LATENCY, REQUEST_ERRORS
 
 load_dotenv()
 
@@ -12,7 +14,7 @@ load_dotenv()
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
-    app.config["APP_VERSION"] = "1.1"
+    app.config["APP_VERSION"] = "2.0.0"
 
     logging.basicConfig(
         level=getattr(logging, app.config.get("LOG_LEVEL", "INFO"), logging.INFO),
@@ -28,6 +30,25 @@ def create_app(config_object=Config):
 
     from app.routes import bp as api_bp
     app.register_blueprint(api_bp)
+
+    @app.route("/metrics", methods=["GET"])
+    def metrics():
+        return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+    @app.before_request
+    def start_timer():
+        request.start_time = time.time()
+
+    @app.after_request
+    def record_metrics(response):
+        if hasattr(request, 'start_time'):
+            resp_time = time.time() - request.start_time
+            endpoint = request.endpoint or 'unknown'
+            REQUEST_LATENCY.labels(endpoint=endpoint).observe(resp_time)
+            REQUEST_COUNT.labels(method=request.method, endpoint=endpoint, http_status=response.status_code).inc()
+            if response.status_code >= 400:
+                REQUEST_ERRORS.labels(endpoint=endpoint, http_status=response.status_code).inc()
+        return response
 
     @app.errorhandler(404)
     def handle_not_found(error):
